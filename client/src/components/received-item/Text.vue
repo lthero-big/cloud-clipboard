@@ -34,7 +34,7 @@
                 <v-expand-transition>
                     <div v-show="expand">
                         <v-divider class="my-2"></v-divider>
-                        <div ref="content" v-html="meta.content.replace(/\n/g, '<br>')" v-linkified></div>
+                        <div ref="content" v-html="renderMarkdown(meta.content)" v-linkified></div>
                     </div>
                 </v-expand-transition>
             </v-card-text>
@@ -43,6 +43,7 @@
 </template>
 
 <script>
+import MarkdownIt from 'markdown-it';
 import {
     mdiChevronUp,
     mdiChevronDown,
@@ -67,9 +68,13 @@ export default {
             mdiChevronDown,
             mdiContentCopy,
             mdiClose,
+            md: new MarkdownIt(),  // Markdown 解析器实例
         };
     },
     methods: {
+        renderMarkdown(text) {
+            return this.md.render(text);
+        },
         copyText() {
             let el = document.createElement('textarea');
             el.value = new DOMParser().parseFromString(this.meta.content, 'text/html').documentElement.textContent;
@@ -95,5 +100,6 @@ export default {
             });
         },
     },
+
 }
 </script>

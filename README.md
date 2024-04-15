@@ -468,56 +468,60 @@ curl -X POST -H "Content-Type: text/plain" -d "这里是您要发送的文本" h
 
 ## 【python】上传文字内容
 
-简单版本
-
-```python
-import requests
-
-# 发送文本到房间test，如果公共房间则用?room=即可
-text_url = 'https://clip.lthero.top/text?room=test'
-data = "testtest"
-headers = {'Content-Type': 'text/plain'}
-response = requests.post(text_url, data=data, headers=headers)
-print(response.text)
-```
-
-复杂版本
-
 `upload_text.py`
 
+> 支持同时上传多段内容，支持中文，支持从标准输入流作参数如echo, cat
+
 ```python
+import sys
 import requests
 import argparse
 
 def send_text(text_url, data, room):
-    # 如果提供了房间名称，将其添加到URL中
-    text_url = text_url+"?room="+room
-    headers = {'Content-Type': 'text/plain'}
-    response = requests.post(text_url, data=data, headers=headers)
+    text_url += f"?room={room}"
+    headers = {'Content-Type': 'text/plain; charset=utf-8'}
+    response = requests.post(text_url, data=data.encode('utf-8'), headers=headers)
     return response
 
 def main():
     parser = argparse.ArgumentParser(description='Send text to a specified room via the web API.')
-    parser.add_argument('data', type=str, help='The text data to send.')
+    parser.add_argument('data', nargs='*', type=str, help='The text data to send directly as arguments.')
     parser.add_argument('--room', type=str, default="", help='The name of the room (optional).')
-
     args = parser.parse_args()
 
     text_url = 'https://clip.lthero.top/text'
-    response = send_text(text_url, args.data, args.room)
-    # 检查状态码来判断是否成功
-    if response.status_code == 200:
-        print("发送成功:")
+
+    # Handle multiple command-line arguments or single stdin input
+    if args.data:
+        # If data arguments are provided, send each one
+        for data in args.data:
+            response = send_text(text_url, data, args.room)
+            if response.status_code == 200:
+                print(f"发送成功: {data}")
+            else:
+                print(f"发送失败，状态码 {response.status_code}: {response.text}, 内容: {data}")
+    elif not sys.stdin.isatty():
+        # If no data arguments but stdin has data
+        datas = sys.stdin.read().strip().split(" ")
+        for data in datas:
+            if data:
+                response = send_text(text_url, data, args.room)
+                if response.status_code == 200:
+                    print(f"发送成功: {data}")
+                else:
+                    print(f"发送失败，状态码 {response.status_code}: {response.text}")
     else:
-        print(f"发送失败，状态码 {response.status_code}: {response.text}")
+        print("未接收到待发送的数据，请从标准输入流或从参数传入数据.")
 
 if __name__ == '__main__':
     main()
 ```
 
-* 使用命令：`python upload_text.py 1234 ` 上传1234到公共房间
-
-
+* 使用命令：
+* `python upload_text.py 1234 ` 上传1234到公共房间
+* `python upload_text.py  "这是第一条消息" "这是第二条消息" --room test`   上传"**这是第一条消息**" "**这是第二条消息**"到test房间
+* `echo "11111111" "22222"| python upload_text.py` 从echo传输多次数据到upload_text.py
+* `cat upload_text.py | python upload_text.py --room lthero` 从cat传输数据到upload_text.py
 
 
 
